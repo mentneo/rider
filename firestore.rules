@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public access to cars collection for read
+    match /cars/{carId} {
+      allow read: if true;
+      // Allow any authenticated user to add cars while initializing the app
+      allow write: if request.auth != null;
+    }
+    
+    // Allow users to read and write their own data
+    match /users/{userId} {
+      allow read: if true;  // Allow read for initialization
+      allow create: if request.auth != null || true;  // Allow creation during initialization
+      allow update: if request.auth != null && (request.auth.uid == userId || 
+                     request.resource.data.role == "admin");
+      allow delete: if request.auth != null && request.resource.data.role == "admin";
+      
+      // Allow users to manage their own notifications
+      match /notifications/{notificationId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Bookings access rules
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null || true;  // Allow reads during development
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (
+        resource.data.customerId == request.auth.uid || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"
+      );
+    }
+  }
+}
