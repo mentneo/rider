@@ -1,0 +1,15 @@
+console.log("Please run the following commands in your terminal to clean up your repository:");
+console.log("");
+console.log("1. Remove node_modules from git tracking:");
+console.log("   git rm -r --cached node_modules");
+console.log("");
+console.log("2. Add the .gitignore file to git:");
+console.log("   git add .gitignore");
+console.log("");
+console.log("3. Commit the changes:");
+console.log("   git commit -m \"Remove node_modules and add .gitignore\"");
+console.log("");
+console.log("4. Push to GitHub again:");
+console.log("   git push -u origin main");
+console.log("");
+console.log("This should resolve the issue with large files being rejected by GitHub.");
