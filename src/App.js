@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { initializeFirestore } from './utils/initFirestore';
 import { setupAdminAccount } from './utils/adminSetup';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import RoleRedirect from './components/auth/RoleRedirect';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -42,6 +43,22 @@ import DriverDashboard from './pages/driver/Dashboard';
 import DriverRides from './pages/driver/Rides';
 import DriverProfile from './pages/driver/Profile';
 
+// Admin route wrapper that strictly checks for admin role
+const AdminRoute = ({ children }) => {
+  const { currentUser, userRole, loading } = useAuth();
+  
+  if (loading) {
+    return <LoadingSpinner text="Checking authentication..." />;
+  }
+  
+  // Only admin can access these routes, redirect others to login
+  if (!currentUser || userRole !== 'admin') {
+    return <Navigate to="/admin/login" replace />;
+  }
+  
+  return children;
+};
+
 const App = () => {
   const [initAttempted, setInitAttempted] = useState(false);
 
@@ -66,10 +83,10 @@ const App = () => {
   }, [initAttempted]);
 
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <Navbar />
-        <NotificationComponent /> {/* Add the notification component */}
+        <NotificationComponent />
         <main className="min-h-screen bg-gray-50">
           <Routes>
             {/* Public Routes */}
@@ -81,6 +98,9 @@ const App = () => {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/driver/login" element={<DriverLoginPage />} />
+            
+            {/* Role-based redirect */}
+            <Route path="/redirect" element={<RoleRedirect />} />
             
             {/* Customer Routes */}
             <Route path="/dashboard" element={
@@ -106,29 +126,29 @@ const App = () => {
             
             {/* Admin Routes */}
             <Route path="/admin/dashboard" element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <AdminRoute>
                 <AdminDashboard />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             <Route path="/admin/cars" element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <AdminRoute>
                 <AdminCars />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             <Route path="/admin/drivers" element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <AdminRoute>
                 <AdminDrivers />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             <Route path="/admin/bookings" element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <AdminRoute>
                 <AdminBookings />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             <Route path="/admin/payments" element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <AdminRoute>
                 <AdminPayments />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             {/* Driver Routes */}
@@ -154,8 +174,8 @@ const App = () => {
         </main>
         <Footer />
         <ToastContainer position="top-right" autoClose={5000} />
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 };
 

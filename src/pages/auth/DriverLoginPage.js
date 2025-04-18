@@ -13,9 +13,18 @@ const DriverLoginPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If user is already logged in as driver, redirect to driver dashboard
+    // Only redirect if user is logged in AND has driver role
     if (currentUser && userRole === 'driver') {
       navigate('/driver/dashboard');
+    } else if (currentUser && userRole !== 'driver') {
+      // If user is logged in but NOT a driver, show error and redirect to appropriate dashboard
+      toast.error('Access denied. This portal is for drivers only.');
+      
+      if (userRole === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
   }, [currentUser, userRole, navigate]);
 
@@ -44,8 +53,7 @@ const DriverLoginPage = () => {
       // Proceed with login
       await login(email, password);
       
-      toast.success('Login successful!');
-      navigate('/driver/dashboard');
+      // No need to navigate here, the useEffect will handle it when userRole is updated
     } catch (error) {
       let errorMessage = 'Failed to login.';
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {

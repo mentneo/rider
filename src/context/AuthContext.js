@@ -42,6 +42,69 @@ export function AuthProvider({ children }) {
     checkRedirectResult();
   }, []);
 
+  // Helper function to store user role in localStorage
+  const saveUserRoleToLocalStorage = (role) => {
+    try {
+      localStorage.setItem('userRole', role);
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  };
+
+  // Helper function to get user role from localStorage
+  const getUserRoleFromLocalStorage = () => {
+    try {
+      return localStorage.getItem('userRole');
+    } catch (error) {
+      console.error('Error reading from localStorage:', error);
+      return null;
+    }
+  };
+
+  // Helper function to validate if user is admin
+  const validateAdminRole = async (uid) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      if (userDoc.exists() && userDoc.data().role === 'admin') {
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error validating admin role:', error);
+      return false;
+    }
+  };
+
+  // Helper function to fetch user data from Firestore
+  const fetchUserData = async (user) => {
+    if (!user) {
+      setUserRole(null);
+      saveUserRoleToLocalStorage(null);
+      return null;
+    }
+    
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const role = userData.role || 'customer';
+        setUserRole(role);
+        saveUserRoleToLocalStorage(role);
+        return userData;
+      } else {
+        console.log('No user document found for:', user.uid);
+        setUserRole('customer'); // Default role
+        saveUserRoleToLocalStorage('customer');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      setUserRole('customer'); // Default role on error
+      saveUserRoleToLocalStorage('customer');
+      return null;
+    }
+  };
+
   async function register(email, password, name, role = 'customer') {
     try {
       // Create user in Firebase Auth
@@ -67,6 +130,10 @@ export function AuthProvider({ children }) {
           fcmToken
         }, { merge: true });
       }
+      
+      // Update context state
+      setUserRole(role);
+      saveUserRoleToLocalStorage(role);
       
       return user;
     } catch (error) {
@@ -96,9 +163,33 @@ export function AuthProvider({ children }) {
         }
       }
       
+      await fetchUserData(userCredential.user);
       return userCredential.user;
     } catch (error) {
       console.error('Error in login:', error);
+      throw error;
+    }
+  }
+
+  // Function to log in admin specifically
+  async function adminLogin(email, password) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // After login, verify this is actually an admin
+      const isAdmin = await validateAdminRole(userCredential.user.uid);
+      
+      if (!isAdmin) {
+        // If not admin, log out and throw error
+        await signOut(auth);
+        throw new Error('Access denied. Admin privileges required.');
+      }
+      
+      // If is admin, proceed with setting user data
+      await fetchUserData(userCredential.user);
+      return userCredential.user;
+    } catch (error) {
+      console.error('Admin login error:', error);
       throw error;
     }
   }
@@ -159,6 +250,8 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
+    saveUserRoleToLocalStorage(null);
+    localStorage.removeItem('userRole');
     return signOut(auth);
   }
 
@@ -172,19 +265,29 @@ export function AuthProvider({ children }) {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             setUserRole(userDoc.data().role);
+            saveUserRoleToLocalStorage(userDoc.data().role);
           } else {
             setUserRole('customer'); // Default role
+            saveUserRoleToLocalStorage('customer');
           }
         } catch (error) {
           console.error('Error fetching user role:', error);
           setUserRole('customer'); // Default role on error
+          saveUserRoleToLocalStorage('customer');
         }
       } else {
         setUserRole(null);
+        localStorage.removeItem('userRole');
       }
       
       setLoading(false);
     });
+
+    // Check if we have a cached role while waiting for Firebase
+    const cachedRole = getUserRoleFromLocalStorage();
+    if (cachedRole) {
+      setUserRole(cachedRole);
+    }
 
     return unsubscribe;
   }, []);
@@ -195,9 +298,11 @@ export function AuthProvider({ children }) {
     loading,
     register,
     login,
+    adminLogin,
     loginWithGoogle,
     loginWithApple,
-    logout
+    logout,
+    isAdmin: userRole === 'admin'
   };
 
   return (

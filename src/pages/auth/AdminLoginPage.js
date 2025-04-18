@@ -6,17 +6,26 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
 const AdminLoginPage = () => {
-  // Pre-populate with admin credentials for easy access
+  // Pre-populate for development ease
   const [email, setEmail] = useState('mentneo6@gmail.com');
   const [password, setPassword] = useState('itsmeiamabhi');
   const [loading, setLoading] = useState(false);
-  const { login, currentUser, userRole } = useAuth();
+  const { adminLogin, currentUser, userRole } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If user is already logged in as admin, redirect to admin dashboard
+    // Only redirect if user is logged in AND has admin role
     if (currentUser && userRole === 'admin') {
       navigate('/admin/dashboard');
+    } else if (currentUser && userRole !== 'admin') {
+      // If user is logged in but NOT an admin, show error and redirect to appropriate dashboard
+      toast.error('Access denied. This portal is for administrators only.');
+      
+      if (userRole === 'driver') {
+        navigate('/driver/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
   }, [currentUser, userRole, navigate]);
 
@@ -42,18 +51,25 @@ const AdminLoginPage = () => {
         return;
       }
       
-      // Proceed with login
-      await login(email, password);
+      // Proceed with admin login (which will validate admin role)
+      await adminLogin(email, password);
       
-      toast.success('Login successful!');
-      navigate('/admin/dashboard');
+      // Explicitly set admin role in localStorage as a backup
+      localStorage.setItem('userRole', 'admin');
+      
+      // Success message (navigation handled by useEffect)
+      toast.success('Admin login successful!');
     } catch (error) {
       let errorMessage = 'Failed to login.';
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      
+      if (error.message.includes('Admin privileges required')) {
+        errorMessage = 'Access denied. Admin privileges required.';
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         errorMessage = 'Invalid email or password';
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many failed attempts. Please try again later.';
       }
+      
       toast.error(errorMessage);
       console.error(error);
     } finally {

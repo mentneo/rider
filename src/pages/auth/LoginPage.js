@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login, currentUser, userRole } = useAuth();
   const navigate = useNavigate();
@@ -16,18 +17,37 @@ const LoginPage = () => {
   const redirectPath = queryParams.get('redirect') || '/dashboard';
   
   useEffect(() => {
-    // If user is already logged in, redirect to appropriate dashboard
-    if (currentUser) {
-      if (userRole === 'admin') {
-        navigate('/admin/dashboard');
-      } else if (userRole === 'driver') {
-        navigate('/driver/dashboard');
-      } else {
-        // For regular users, redirect to the requested page or dashboard
-        navigate(redirectPath);
-      }
+    // Check if we should pre-fill the email from localStorage
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
     }
-  }, [currentUser, userRole, navigate, redirectPath]);
+  }, []);
+  
+  useEffect(() => {
+    // If user is already logged in, redirect based on role
+    if (currentUser && userRole) {
+      redirectUserBasedOnRole(userRole, redirectPath);
+    }
+  }, [currentUser, userRole, redirectPath, navigate]);
+  
+  // Function to handle user redirection based on role
+  const redirectUserBasedOnRole = (role, redirectPath) => {
+    switch (role) {
+      case 'admin':
+        navigate('/admin/dashboard');
+        break;
+      case 'driver':
+        navigate('/driver/dashboard');
+        break;
+      case 'customer':
+      default:
+        // For regular users, respect the redirect path
+        navigate(redirectPath);
+        break;
+    }
+  };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,11 +59,19 @@ const LoginPage = () => {
     
     try {
       setLoading(true);
+      
+      // Save email to localStorage if "Remember me" is checked
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
+      
       await login(email, password);
       
       toast.success('Login successful!');
       
-      // Navigation will be handled by the useEffect
+      // Navigation will be handled by the useEffect above when userRole is updated
     } catch (error) {
       let errorMessage = 'Failed to login.';
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
@@ -114,6 +142,8 @@ const LoginPage = () => {
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
                 className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
@@ -138,6 +168,32 @@ const LoginPage = () => {
             </button>
           </div>
         </form>
+        
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or sign in as</span>
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <Link
+              to="/admin/login"
+              className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Admin
+            </Link>
+            <Link
+              to="/driver/login"
+              className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Driver
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
