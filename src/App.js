@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { initializeFirestore } from './utils/initFirestore';
 import { setupAdminAccount } from './utils/adminSetup';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -40,34 +41,6 @@ import AdminPayments from './pages/admin/Payments';
 import DriverDashboard from './pages/driver/Dashboard';
 import DriverRides from './pages/driver/Rides';
 import DriverProfile from './pages/driver/Profile';
-
-// Route Guards
-const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { currentUser, userRole, loading } = useAuth();
-  
-  if (loading) {
-    return <div className="flex justify-center items-center h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-    </div>;
-  }
-  
-  if (!currentUser) {
-    return <Navigate to="/login" />;
-  }
-  
-  if (allowedRoles && !allowedRoles.includes(userRole)) {
-    // Redirect based on user role
-    if (userRole === 'admin') {
-      return <Navigate to="/admin/dashboard" />;
-    } else if (userRole === 'driver') {
-      return <Navigate to="/driver/dashboard" />;
-    } else {
-      return <Navigate to="/dashboard" />;
-    }
-  }
-  
-  return children;
-};
 
 const App = () => {
   const [initAttempted, setInitAttempted] = useState(false);

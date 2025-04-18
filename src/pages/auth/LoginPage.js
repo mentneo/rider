@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 
@@ -7,9 +7,28 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, currentUser, userRole } = useAuth();
   const navigate = useNavigate();
-
+  const location = useLocation();
+  
+  // Get the redirect path from URL query params
+  const queryParams = new URLSearchParams(location.search);
+  const redirectPath = queryParams.get('redirect') || '/dashboard';
+  
+  useEffect(() => {
+    // If user is already logged in, redirect to appropriate dashboard
+    if (currentUser) {
+      if (userRole === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (userRole === 'driver') {
+        navigate('/driver/dashboard');
+      } else {
+        // For regular users, redirect to the requested page or dashboard
+        navigate(redirectPath);
+      }
+    }
+  }, [currentUser, userRole, navigate, redirectPath]);
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -21,10 +40,12 @@ const LoginPage = () => {
     try {
       setLoading(true);
       await login(email, password);
-      navigate('/dashboard');
+      
       toast.success('Login successful!');
+      
+      // Navigation will be handled by the useEffect
     } catch (error) {
-      let errorMessage = 'Failed to login. Please check your credentials.';
+      let errorMessage = 'Failed to login.';
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         errorMessage = 'Invalid email or password';
       } else if (error.code === 'auth/too-many-requests') {
@@ -36,7 +57,7 @@ const LoginPage = () => {
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">

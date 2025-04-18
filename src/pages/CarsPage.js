@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 
 const CarsPage = () => {
   const [cars, setCars] = useState([]);
@@ -12,6 +13,8 @@ const CarsPage = () => {
     priceRange: 'all',
     sortBy: 'default'
   });
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCars();
@@ -88,6 +91,25 @@ const CarsPage = () => {
           return 0;
       }
     });
+  };
+
+  // Handle booking button click
+  const handleBookClick = (carId) => {
+    // If user is not logged in, redirect to login page with return path
+    if (!currentUser) {
+      // Store the carId in localStorage so we can redirect after login
+      localStorage.setItem('pendingBookingCarId', carId);
+      
+      // Redirect to login with the booking path as return URL
+      navigate(`/login?redirect=/book/${carId}`);
+      
+      // Show notification to the user
+      toast.info('Please log in to continue with your booking.');
+      return;
+    }
+    
+    // If user is logged in, navigate directly to booking page
+    navigate(`/book/${carId}`);
   };
 
   return (
@@ -203,12 +225,12 @@ const CarsPage = () => {
                   </div>
                 )}
                 
-                <Link
-                  to={`/book/${car.id}`}
-                  className="w-full block text-center bg-primary text-white px-4 py-2 rounded-md font-medium hover:bg-primary-dark transition-colors"
+                <button
+                  onClick={() => handleBookClick(car.id)}
+                  className="w-full text-center bg-primary text-white px-4 py-2 rounded-md font-medium hover:bg-primary-dark transition-colors"
                 >
                   Book Now
-                </Link>
+                </button>
               </div>
             </div>
           ))}

@@ -32,11 +32,28 @@ const BookingPage = () => {
   });
 
   useEffect(() => {
+    // Check if user is logged in
+    if (!currentUser) {
+      // Store carId in localStorage before redirecting
+      if (carId) {
+        localStorage.setItem('pendingBookingCarId', carId);
+      }
+      
+      // Redirect to login with return path to this booking page
+      navigate(`/login?redirect=/book/${carId}`);
+      toast.info('Please log in to continue with your booking.');
+      return;
+    }
+    
+    // If user is logged in, proceed with fetching car details
     if (carId) {
       fetchCarDetails();
       fetchAvailableDrivers();
+      
+      // Clear pending booking info from localStorage if it exists
+      localStorage.removeItem('pendingBookingCarId');
     }
-  }, [carId]);
+  }, [carId, currentUser, navigate]);
 
   useEffect(() => {
     // Calculate booking cost whenever relevant form data changes
@@ -117,9 +134,10 @@ const BookingPage = () => {
     try {
       setLoading(true);
       
+      // Double check that user is logged in
       if (!currentUser) {
         toast.error('Please login to continue');
-        navigate('/login');
+        navigate(`/login?redirect=/book/${carId}`);
         return;
       }
       
