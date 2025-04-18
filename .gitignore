@@ -1,9 +1,10 @@
 # dependencies
-/node_modules
+node_modules
 node_modules/
 /node_modules
-/.pnp
-.pnp.js
+/node_modules/
+.cache
+*.pack
 
 # testing
 /coverage
@@ -33,9 +34,3 @@ firebase-debug.log
 .vscode/
 *.swp
 *.swo
-
-# Large files
-*.pack
-*.log
-.cache/
-node_modules/.cache/
